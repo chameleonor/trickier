@@ -1,0 +1,32 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "script": {
+            "script": {
+              "source": """
+              if (!doc['request_headers.User-Agent'].isEmpty()) {
+                String ua = doc['request_headers.User-Agent'].value;
+                if (ua.contains("Openfin/")) {
+                  int index = ua.indexOf("Openfin/") + 8;  // 'Openfin/' tem 8 caracteres
+                  String versionStr = ua.substring(index, ua.indexOf('.', index));
+                  if (!versionStr.isEmpty()) {
+                    int version = Integer.parseInt(versionStr);
+                    return version < params.maxVersion;
+                  }
+                }
+              }
+              return false;
+              """,
+              "lang": "painless",
+              "params": {
+                "maxVersion": 30
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
