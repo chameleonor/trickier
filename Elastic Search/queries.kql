@@ -30,3 +30,15 @@
     }
   }
 }
+
+
+
+{
+  "script": {
+    "source": "if (doc['user_nbk'].size() != 0 && doc['user_nbk'].value == params.value) return true; return false;",
+    "lang": "painless",
+    "params": {
+      "value": "x"
+    }
+  }
+}

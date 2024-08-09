@@ -1,0 +1,35 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object system.Windows.Forms.Form
+$form.Text = "Hosts File Editor"
+$form.Size = New-Object System.Drawing.Size(600,400)
+
+$label = New-Object System.Windows.Forms.Label
+$label.Text = "Enter the domain and IP address (e.g., 127.0.0.1 www.example.com):"
+$label.AutoSize = $true
+$label.Location = New-Object System.Drawing.Point(10,20)
+$form.Controls.Add($label)
+
+$input = New-Object System.Windows.Forms.TextBox
+$input.Size = New-Object System.Drawing.Size(550,30)
+$input.Location = New-Object System.Drawing.Point(10,50)
+$form.Controls.Add($input)
+
+$button = New-Object System.Windows.Forms.Button
+$button.Text = "Add Entry"
+$button.Location = New-Object System.Drawing.Point(10,100)
+$form.Controls.Add($button)
+
+$button.Add_Click({
+    $hostsFile = "C:\Windows\System32\drivers\etc\hosts"
+    $entry = $input.Text
+    if (-not [string]::IsNullOrWhiteSpace($entry)) {
+        Add-Content -Path $hostsFile -Value $entry
+        [System.Windows.Forms.MessageBox]::Show("Entry added!")
+    } else {
+        [System.Windows.Forms.MessageBox]::Show("Please enter a valid entry.")
+    }
+})
+
+$form.ShowDialog()
