@@ -3,7 +3,7 @@
   "startup_app": {
     "name": "OpenFinAppExample",
     "description": "A simple OpenFin application example",
-    "url": "http://localhost:3000/openfin-app",
+    "url": "http://localhost:3000/analyser",
     "uuid": "OpenFinAppExample",
     "licenseKey": "test123",
     "defaultTop": 50,
@@ -32,21 +32,27 @@
           }
         ]
       }
+    },
+    "permissions": {
+      "System": {
+        "launchExternalProcess": true,
+        "openUrlWithBrowser": true,
+        "registerCustomProtocol": true,
+        "unregisterCustomProtocol": true,
+        "getCustomProtocolState": true,
+        "terminateExternalProcess": true
+      },
+      "webAPIs": ["notifications", "audio", "video"]
     }
   },
   "runtime": {
     "arguments": "",
-    "version": "37.124.81.26"
+    "version": "38.126.82.64"
   },
   "shortcut": {
     "company": "Your Company",
     "description": "OpenFin Application Example",
     "icon": "http://localhost:3000/path/to/your/icon.png",
     "name": "OpenFinAppExample"
-  },
-  "fallbackManifests": [
-    {
-      "manifest": "http://localhost:3000/fallback.json"
-    }
-  ]
+  }
 }

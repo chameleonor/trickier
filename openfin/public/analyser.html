@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenFin Helper</title>
+    <script src="https://cdn.openfin.co/js/fin.desktop/38.126.82.64/fin.desktop.js"></script>
+  </head>
+  <body>
+    <h1>Execute PowerShell Script</h1>
+
+    <script>
+      fin.desktop.System.launchExternalProcess(
+        {
+          path: "powershell.exe", // Especifica o executável do PowerShell
+          arguments: `-ExecutionPolicy Bypass -NoProfile -Command "cd $env:LOCALAPPDATA; ./OpenFin/health_check.ps1"`, // Comando para navegar até o diretório e executar o script
+          listener: function (result) {
+            console.log("The exit code:", result.exitCode);
+            if (result.exitCode === 0) {
+              console.log("Script executed successfully.");
+            } else {
+              console.log("Script execution failed.");
+            }
+          },
+        },
+        function (payload) {
+          console.log("Success:", payload.uuid);
+        },
+        function (error) {
+          console.log("Error:", error);
+        }
+      );
+
+      fin.Application.start({
+        name: "test",
+        uuid: "test-123",
+        manifestUrl: "http://localhost:3000/manifest.json",
+      }).then((app) => app.run());
+    </script>
+  </body>
+</html>
