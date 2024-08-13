@@ -1,0 +1,41 @@
+let
+    start_date_param_as_dt = Excel.CurrentWorkbook(){[Name="StartDateParam"]}[Content]{0}[Column1],
+    end_date_param_as_dt = Excel.CurrentWorkbook(){[Name="EndDateParam"]}[Content]{0}[Column1],
+    revisionParam = Excel.CurrentWorkbook(){[Name="revisionParam"]}[Content]{0}[Column1],
+
+    start_date_param = DateTime.ToText(start_date_param_as_dt, [Format="yyyy-MM-dd"]),
+    end_date_param = DateTime.ToText(end_date_param_as_dt, [Format="yyyy-MM-dd"]),
+
+    url = "http://uswxdbqzd163.ussdnve.baml.com:9250/quartz-components-gbam-ui-playground-stats-*/_search",
+    body = Text.ToBinary("{ 
+        ""query"": { 
+            ""bool"": { 
+                ""must"": [ 
+                    { ""range"": { ""date"": {""gte"": """ & start_date_param & """, ""lte"": """ & end_date_param & """} } }, 
+                    { ""match"": {""statistics"": ""true""}}, 
+                    { ""match"": {""revision"": """ & revisionParam & """}},
+                    { ""match"": {""isFirstOfTheDay.first"": ""true""}},
+                    { ""match"": {""customPayload.tag"": ""PROD""}},
+                    { ""match"": {""location.pathname"": ""/""}} 
+                ]
+            }
+        }, 
+        ""size"": 1000000 
+    }"),
+    headers = [#"Content-type" = "application/json"],
+    response = Json.Document(Web.Contents(url, [Headers=headers, Content=body])),
+    hits = response[hits],
+    hits1 = hits[hits],
+    #"Converted to Table" = Table.FromList(hits1, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Expanded Column1" = Table.ExpandRecordColumn(#"Converted to Table", "Column1", {"_index", "_id", "_score", "_source"}, {"Column1._index", "Column1._id", "Column1._score", "Column1._source"}),
+    #"Expanded Column1._source" = Table.ExpandRecordColumn(#"Expanded Column1", "Column1._source", {"@timestamp", "application_id", "application_name", "application_hostingInfo", "application_project", "application_inProduction", "application_lobTags", "application_gbamDesktopTags", "request_headers", "request_method", "request_uri", "request_http_version", "request_remote_ip", "request_protocol", "host", "request_arguments", "application_manifest", "user_nbk", "user_name", "user_lob", "user_sub_lob", "country", "city", "hierarchy", "divison", "sub_division", "officer_title", "group", "timeStamp", "target", "customPayload", "location", "clientInformation", "eventName", "applicationName", "windowName", "windowUUID", "eventTimestamp", "isLogRecord", "firstName", "lastName", "username", "maskedId", "date", "time", "request_uuid", "launcher", "application_build", "statistics", "revision", "withGTO", "isFirstOfTheDay"}, {"Column1._source.@timestamp", "Column1._source.application_id", "Column1._source.application_name", "Column1._source.application_hostingInfo", "Column1._source.application_project", "Column1._source.application_inProduction", "Column1._source.application_lobTags", "Column1._source.application_gbamDesktopTags", "Column1._source.request_headers", "Column1._source.request_method", "Column1._source.request_uri", "Column1._source.request_http_version", "Column1._source.request_remote_ip", "Column1._source.request_protocol", "Column1._source.host", "Column1._source.request_arguments", "Column1._source.application_manifest", "Column1._source.user_nbk", "Column1._source.user_name", "Column1._source.user_lob", "Column1._source.user_sub_lob", "Column1._source.country", "Column1._source.city", "Column1._source.hierarchy", "Column1._source.divison", "Column1._source.sub_division", "Column1._source.officer_title", "Column1._source.group", "Column1._source.timeStamp", "Column1._source.target", "Column1._source.customPayload", "Column1._source.location", "Column1._source.clientInformation", "Column1._source.eventName", "Column1._source.applicationName", "Column1._source.windowName", "Column1._source.windowUUID", "Column1._source.eventTimestamp", "Column1._source.isLogRecord", "Column1._source.firstName", "Column1._source.lastName", "Column1._source.username", "Column1._source.maskedId", "Column1._source.date", "Column1._source.time", "Column1._source.request_uuid", "Column1._source.launcher", "Column1._source.application_build", "Column1._source.statistics", "Column1._source.revision", "Column1._source.withGTO", "Column1._source.isFirstOfTheDay"}),
+    #"Removed Columns" = Table.RemoveColumns(#"Expanded Column1._source",{"Column1._index", "Column1._id", "Column1._score", "Column1._source.@timestamp", "Column1._source.application_id", "Column1._source.application_hostingInfo", "Column1._source.application_project", "Column1._source.application_inProduction", "Column1._source.application_lobTags", "Column1._source.application_gbamDesktopTags", "Column1._source.request_headers", "Column1._source.request_method", "Column1._source.request_uri", "Column1._source.request_http_version", "Column1._source.request_remote_ip", "Column1._source.request_protocol", "Column1._source.host", "Column1._source.request_arguments", "Column1._source.application_manifest", "Column1._source.timeStamp"}),
+    #"Expanded Column1._source.target" = Table.ExpandRecordColumn(#"Removed Columns", "Column1._source.target", {"tagName", "id", "baseURI"}, {"Column1._source.target.tagName", "Column1._source.target.id", "Column1._source.target.baseURI"}),
+    #"Removed Columns1" = Table.RemoveColumns(#"Expanded Column1._source.target",{"Column1._source.target.id"}),
+    #"Expanded Column1._source.customPayload" = Table.ExpandRecordColumn(#"Removed Columns1", "Column1._source.customPayload", {"branch", "tag"}, {"Column1._source.customPayload.branch", "Column1._source.customPayload.tag"}),
+    #"Removed Columns2" = Table.RemoveColumns(#"Expanded Column1._source.customPayload",{"Column1._source.target.tagName"}),
+    #"Expanded Column1._source.location" = Table.ExpandRecordColumn(#"Removed Columns2", "Column1._source.location", {"origin", "pathname", "port", "protocol"}, {"Column1._source.location.origin", "Column1._source.location.pathname", "Column1._source.location.port", "Column1._source.location.protocol"}),
+    #"Removed Columns3" = Table.RemoveColumns(#"Expanded Column1._source.location",{"Column1._source.location.port", "Column1._source.location.protocol", "Column1._source.clientInformation", "Column1._source.eventName", "Column1._source.applicationName", "Column1._source.windowName", "Column1._source.windowUUID", "Column1._source.eventTimestamp", "Column1._source.isLogRecord", "Column1._source.firstName", "Column1._source.lastName", "Column1._source.username", "Column1._source.request_uuid", "Column1._source.application_build", "Column1._source.statistics", "Column1._source.isFirstOfTheDay"}),
+    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns3",{{"Column1._source.application_name", "App Name"}, {"Column1._source.user_nbk", "NBK"}, {"Column1._source.user_name", "User Name"}, {"Column1._source.user_lob", "User Lob"}, {"Column1._source.user_sub_lob", "User Sub Lob"}, {"Column1._source.country", "Country"}, {"Column1._source.city", "City"}, {"Column1._source.hierarchy", "Hierarchy"}, {"Column1._source.divison", "Divison"}, {"Column1._source.sub_division", "Sub Division"}, {"Column1._source.officer_title", "Officer Title"}, {"Column1._source.group", "Group"}, {"Column1._source.target.baseURI", "Base URI"}, {"Column1._source.customPayload.branch", "Branch"}, {"Column1._source.customPayload.tag", "Tag"}, {"Column1._source.location.origin", "Origin"}, {"Column1._source.location.pathname", "URL route"}, {"Column1._source.maskedId", "MaskedId"}, {"Column1._source.date", "Date"}, {"Column1._source.time", "Time"}, {"Column1._source.launcher", "Launcher"}, {"Column1._source.revision", "Revision"}, {"Column1._source.withGTO", "withGTO"}})
+in
+    #"Renamed Columns"
