@@ -1,94 +1,103 @@
+[System.Net.WebRequest]::DefaultWebProxy = [System.Net.WebRequest]::GetSystemWebProxy()
+[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+
 $runtimePath = "$env:LOCALAPPDATA\OpenFin\runtime"
 
-# Inicializa o dicionário de status para monitorar o progresso do checklist
+$DONE="ok"
+$PENDING="pending"
+$FAILED="failed"
+$OPENFIN_CHECKSUM_BASE_URI="https://cdn.openfin.co/versions/fetchChecksum?url=https://cdn.openfin.co/release/meta/runtime/virustotal/win/x64"
+
 $status = @{
-    "RuntimeFolderExists" = "pending"
-    "ChecksumsVerification" = "pending"
-    "OtherStep1" = "pending"
-    "OtherStep2" = "pending"
+    "RuntimeFolderExists" = $PENDING
+    "ChecksumsVerification" = $PENDING
+    "CDNValidation" = $PENDING
+    "ThirdStep" = $PENDING
 }
 
 function CheckRuntimeFolder {
-    if (-Not (Test-Path -Path $runtimePath)) {
+   if (-Not (Test-Path -Path $runtimePath)) {
         Write-Host "The runtime folder does not exist: $runtimePath" -ForegroundColor Red
-        $status["RuntimeFolderExists"] = "failed"
-        return $false
+        Write-Host "Creating the runtime folder..." -ForegroundColor Yellow
+        
+        New-Item -Path $runtimePath -ItemType Directory
+        Write-Host "Runtime folder created: $runtimePath" -ForegroundColor Green
+        
+        Write-Host "Restarting the script..." -ForegroundColor Cyan
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -NoNewWindow
+        exit
     } else {
         Write-Host "Runtime folder exists: $runtimePath" -ForegroundColor Green
-        $status["RuntimeFolderExists"] = "done"
+        $status["RuntimeFolderExists"] = $DONE
         return $true
     }
 }
 
 function VerifyChecksums {
-    $checksums = @{
-        "38.126.82.64" = "26852CC443EC5B0F90214C1A0842B83EF80B9EBFAACE9BE175B0B74E368E4988"
-        "38.126.82.61" = "CF8977FB8FA0A9831D396D49FA6878927AB4F02DA1F581FC66BD6A83A2AAE2EF"
-        "37.124.81.30" = "0E9D2CCC362697F9324BC470FB0CC9EA9EB831B174CF4643BDF202F14EF8D680"
-        "37.124.81.26" = "24791828A0D33B044EB9E77DFB5B3C4517B89285A8C40CB1F2485941CF29AF90"
-    }
-
     $folders = Get-ChildItem -Path $runtimePath -Directory
 
     if ($folders.Count -gt 0) {
         foreach ($folder in $folders) {
             $version = $folder.Name
-            $openfinExePath = Join-Path -Path $folder.FullName -ChildPath "OpenFin\openfin.exe"
+            Write-Host "Testing version: $version"
 
-            if (Test-Path -Path $openfinExePath) {
-                $calculatedChecksum = Get-FileHash -Algorithm SHA256 -Path $openfinExePath | Select-Object -ExpandProperty Hash
+            if (Test-Path -Path $folder.FullName) {
+                # zip folder to test checksum
 
-                Write-Host "Version: $version"
-                Write-Host "Checksum calculated: $calculatedChecksum"
+                Compress-Arquive -Path $folder.FullName -DestinationPath $folder.FullName".zip"
 
-                if ($checksums.ContainsKey($version)) {
-                    $expectedChecksum = $checksums[$version]
+                $checksum = Invoke-WebRequest -URI $OPENFIN_CHECKSUM_BASE_URI"/"$version".sha256"
+                Write-Host "Openfin checksum result: $checksum"
 
-                    if ($calculatedChecksum -eq $expectedChecksum) {
-                        Write-Host "Checksum matches as expected." -ForegroundColor Green
-                    } else {
-                        Write-Host "Checksum does not match!" -ForegroundColor Red
-                        Write-Host "Checksum expected is: $expectedChecksum" -ForegroundColor Red
-                    }
+
+                $calculatedChecksum = certutil.exe -hashfile $zipFolder sha256 | Select-Object -ExpandProperty Hash
+                Write-Host "Local checksum result: $calculatedChecksum"
+
+
+                if ($checksum -eq $calculatedChecksum) {
+                    Write-Host "Checksum matches as expected." -ForegroundColor Green
                 } else {
-                    Write-Host "No expected checksum found on the list, please generate it before comparing." -ForegroundColor Yellow
+                    Write-Host "Checksum does not match!" -ForegroundColor Red
+                    Write-Host "Checksum expected is: $checksum" -ForegroundColor Red
                 }
             } else {
-                Write-Host "The openfin.exe file was not found for this version: $version." -ForegroundColor Yellow
+                Write-Host "Step ChecksumsVerification - The openfin.exe file was not found for this version: $version." -ForegroundColor Red
             }
 
             Write-Host "-----------------------------"
         }
 
-        $status["ChecksumsVerification"] = "done"
+        $status["ChecksumsVerification"] = $DONE
     } else {
-        Write-Host "No folders found inside OpenFin Runtime."
-        $status["ChecksumsVerification"] = "failed"
+        Write-Host "Step ChecksumsVerification - No folders found inside OpenFin Runtime."
+        $status["ChecksumsVerification"] = $FAILED
     }
 }
 
-# Funções adicionais para outras etapas podem ser definidas aqui
-function OtherStep1 {
-    Write-Host "Executing OtherStep1..." -ForegroundColor Cyan
-    # Lógica para a etapa 1
-    $status["OtherStep1"] = "done"
+function CDNValidation {
+    Write-Host "Executing step 2..." -ForegroundColor Cyan
+    $status["CDNValidation"] = $DONE
 }
 
-function OtherStep2 {
-    Write-Host "Executing OtherStep2..." -ForegroundColor Cyan
-    # Lógica para a etapa 2
-    $status["OtherStep2"] = "done"
+function ThirdStep {
+    Write-Host "Executing step 3..." -ForegroundColor Cyan
+    $status["ThirdStep"] = $DONE
 }
 
-# Executando as funções (checklist)
 if (CheckRuntimeFolder) {
     VerifyChecksums
+} else {
+    Break
 }
 
-# Executar outras etapas do checklist
-OtherStep1
-OtherStep2
+if ($status['RuntimeFolderExists'] -eq $DONE) {
+    CDNValidation
+}
 
-# Exibir o status final do checklist
-Write-Host "`nChecklist Status:"
+if ($status['RuntimeFolderExists'] -eq $DONE) {
+    ThirdStep
+}
+
+
+Write-Host "`n#### Checklist Status ####`n"
 $status.GetEnumerator() | ForEach-Object { Write-Host "$($_.Key): $($_.Value)" }
