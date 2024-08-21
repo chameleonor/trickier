@@ -44,13 +44,14 @@ function VerifyChecksums {
             if (Test-Path -Path $folder.FullName) {
                 # zip folder to test checksum
 
-                Compress-Arquive -Path $folder.FullName -DestinationPath $folder.FullName".zip"
+                Compress-Archive -Path $folder.FullName -DestinationPath "$folder.FullName.zip"
 
                 $checksum = Invoke-WebRequest -URI $OPENFIN_CHECKSUM_BASE_URI"/"$version".sha256"
                 Write-Host "Openfin checksum result: $checksum"
 
+                $zipFolder = "$folder.FullName.zip"
+                $calculatedChecksum = certutil.exe -hashfile $zipFolder sha256 | Select-String "^[0-9a-fA-F]{64}$" | ForEach-Object { $_.ToString().Trim() }
 
-                $calculatedChecksum = certutil.exe -hashfile $zipFolder sha256 | Select-Object -ExpandProperty Hash
                 Write-Host "Local checksum result: $calculatedChecksum"
 
 
