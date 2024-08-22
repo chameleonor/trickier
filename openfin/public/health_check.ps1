@@ -40,29 +40,26 @@ function VerifyChecksums {
         foreach ($folder in $folders) {
             $version = $folder.Name
             Write-Host "Testing version: $version"
+            $zipFolder = $version + ".zip"
+            Compress-Archive -Path $folder.FullName -DestinationPath $zipFolder
 
-            if (Test-Path -Path $folder.FullName) {
-                # zip folder to test checksum
+            Write-Host "Zip file path: $zipFolder"
+            if (-Not (Test-Path -Path $zipFolder)) {
+                Write-Host "Error: The zip file was not created: $zipFolder" -ForegroundColor Red
+                return
+            }
+            $calculatedChecksum = certutil.exe -hashfile $zipFolder sha256 | Select-String "^[0-9a-fA-F]{64}$" | ForEach-Object { $_.ToString().Trim() }
 
-                Compress-Archive -Path $folder.FullName -DestinationPath "$folder.FullName.zip"
+            Write-Host "Local checksum result version: $version / $calculatedChecksum"
 
-                $checksum = Invoke-WebRequest -URI $OPENFIN_CHECKSUM_BASE_URI"/"$version".sha256"
-                Write-Host "Openfin checksum result: $checksum"
+            $checksum = Invoke-WebRequest -URI $OPENFIN_CHECKSUM_BASE_URI"/"$version".sha256"
+            Write-Host "Openfin checksum result version: $version / $checksum"
 
-                $zipFolder = "$folder.FullName.zip"
-                $calculatedChecksum = certutil.exe -hashfile $zipFolder sha256 | Select-String "^[0-9a-fA-F]{64}$" | ForEach-Object { $_.ToString().Trim() }
-
-                Write-Host "Local checksum result: $calculatedChecksum"
-
-
-                if ($checksum -eq $calculatedChecksum) {
-                    Write-Host "Checksum matches as expected." -ForegroundColor Green
-                } else {
-                    Write-Host "Checksum does not match!" -ForegroundColor Red
-                    Write-Host "Checksum expected is: $checksum" -ForegroundColor Red
-                }
+            if ($checksum -eq $calculatedChecksum) {
+                Write-Host "Checksum matches as expected." -ForegroundColor Green
             } else {
-                Write-Host "Step ChecksumsVerification - The openfin.exe file was not found for this version: $version." -ForegroundColor Red
+                Write-Host "Checksum does not match!" -ForegroundColor Red
+                Write-Host "Checksum expected is: $checksum" -ForegroundColor Red
             }
 
             Write-Host "-----------------------------"
