@@ -4,12 +4,20 @@ const fs = require("fs");
 const multer = require("multer");
 
 const app = express();
-const port = 8081;
+const port = 3000;
 
+// Define the public folder where the files are located
 const publicFolder = path.join(__dirname, "public");
 
+// Use express.static middleware to serve static files
 app.use(express.static(publicFolder));
 
+// Serve the index.html file
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Multer configuration for file uploads
 const storage = multer.diskStorage({
   destination: publicFolder,
   filename: (req, file, cb) => {
@@ -19,18 +27,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.get("/:filename", (req, res) => {
-  const filename = req.params.filename;
-  const fileLocation = path.join(publicFolder, filename);
-
-  res.download(fileLocation, (err) => {
-    if (err) {
-      console.error("Error downloading the file:", err);
-      res.status(404).send("File not found");
-    }
-  });
-});
-
+// Route for file upload
 app.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded.");
@@ -38,6 +35,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
   res.send(`File ${req.file.originalname} uploaded successfully.`);
 });
 
+// Route for file deletion
 app.delete("/:filename", (req, res) => {
   const filename = req.params.filename;
   const fileLocation = path.join(publicFolder, filename);
@@ -52,5 +50,5 @@ app.delete("/:filename", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`FTP server running at port ${port}`);
+  console.log(`FTP server running at http://localhost:${port}`);
 });
